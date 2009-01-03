@@ -11,6 +11,7 @@ using System.Security.Cryptography;
 using System.IO;
 using System.Diagnostics;
 using System.Reflection;
+using Brunet.Security;
 #if BRUNET_NUNIT
 using NUnit.Framework;
 #endif
@@ -36,11 +37,20 @@ namespace Brunet.Rpc {
      */
     [NonSerialized]
     private Hashtable _registered_xmlrpc = new Hashtable(); 
+
+    [NonSerialized]
+    protected BrunetSecurityOverlord _bso;
     #endregion
 
     public XmlRpcManager(Node node, RpcManager rpc) {
       _node = node;
       _rpc = rpc;
+    }
+
+    public XmlRpcManager(Node node, RpcManager rpc, BrunetSecurityOverlord bso) :
+      this(node, rpc)
+    {
+      _bso = bso;
     }
 
     /**
@@ -61,6 +71,19 @@ namespace Brunet.Rpc {
       AHSender s = new AHSender(_node, target, (ushort)ahOptions);
       return this.Proxy(s, maxResultsToWait, method, args);
     }
+
+    [XmlRpcMethod]
+    public object[] SecureProxy(string node, int ahOptions, int maxResultsToWait, 
+        string method, params object[] args)
+    {
+      Address target = AddressParser.Parse(node);
+      if(_bso == null) {
+        throw new Exception("There is no SecurityOverlord!");
+      }
+      ISender s = _bso.GetSecureSender(target);
+      return this.Proxy(s, maxResultsToWait, method, args);
+    }
+      
 
     /**
      * @param sender URI specifying the sender.
@@ -483,6 +506,16 @@ namespace Brunet.Rpc {
     {
       RpcManager rpc = RpcManager.GetInstance(node);
       Update(node, rpc);
+    }
+
+    public void Update(Node node, BrunetSecurityOverlord bso)
+    {
+      RpcManager rpc = RpcManager.GetInstance(node);
+      _rpc = rpc;
+      _node = node;
+      _xrm = new XmlRpcManager(_node, _rpc, bso);
+      _rpc.AddHandler("xmlrpc", _xrm);
+      RemotingServices.Marshal(_xrm, "xm.rem");
     }
 
     /**

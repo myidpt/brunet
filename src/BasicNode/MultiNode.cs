@@ -66,7 +66,7 @@ namespace Brunet.Applications {
       for(int i = 0; i < _count - 1; i++) {
         _node_config.NodeAddress = (Utils.GenerateAHAddress()).ToString();
         CreateNode();
-        new Information(_node, "MultiNode");
+        new Information(_node, "MultiNode", _bso);
         _nodes.Add(_node);
         Thread thread = new Thread(_node.Connect);
         thread.Start();

@@ -74,6 +74,7 @@
       value="true"/>
 
     <nant buildfile="src/protocol/default.build" />
+    <nant buildfile="src/Security/default.build" />
     <nant buildfile="src/dht/default.build" />
     <nant buildfile="src/coordinate/default.build" />
     <nant buildfile="src/apps/default.build" />
