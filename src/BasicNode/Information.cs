@@ -112,7 +112,7 @@ namespace Brunet.Applications {
           try {
             count = el.Count;
           } catch { }
-          ht.Add(TransportAddress.TATypeToString(el.TAType), el.Count);
+          ht.Add(TransportAddress.TATypeToString(el.TAType), count);
         }
       }
 
