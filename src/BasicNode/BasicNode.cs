@@ -98,6 +98,7 @@ namespace Brunet.Applications {
         Utils.WriteConfig(path, _node_config);
       }
       _running = true;
+      _shutdown = Shutdown.GetShutdown();
     }
 
     /// <summary>A constructor to be used only by sub-classes.  The goal here being
@@ -259,7 +260,6 @@ namespace Brunet.Applications {
     /// to have your own shutdown path, edit OnExit instead of this.  This can be
     /// called multiple times without negative effect.</summary>
     public virtual void StartServices() {
-      _shutdown = Shutdown.GetShutdown();
       _shutdown.OnExit += OnExit;
 
       if(_node_config.RpcDht != null && _node_config.RpcDht.Enabled) {
