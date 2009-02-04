@@ -3,8 +3,8 @@
 \author David Wolinsky
 \section Where Where To Get Brunet and BasicNode
 All of the ACIS P2P projects are released in a monolithic package available at
-http://www.grid-appliance.org/ipop/ipop.zip and source code releases are
-available at http://www.grid-appliance.org/ipop/ipop.src.zip  If you want the
+http://www.grid-appliance.org/files/ipop/ipop.zip and source code releases are
+available at http://www.grid-appliance.org/files/ipop/ipop.src.zip  If you want the
 latest code available in the repositories, We recommend gathering the
 brunet version from http://boykin.acis.ufl.edu/hgwebdir.cgi/boykin/brunet1-exp
 more stable code can be found from
