@@ -253,6 +253,7 @@ namespace Brunet.Applications {
         }
       }
 
+      new TableServer(_node);
       _dht = new Dht(_node, 3, 20);
     }
 
