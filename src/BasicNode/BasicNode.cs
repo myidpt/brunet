@@ -28,6 +28,7 @@ using Brunet;
 using Brunet.Coordinate;
 using Brunet.DistributedServices;
 using Brunet.Rpc;
+using Brunet.DhtService;
 using Brunet.Security;
 
 using System.Security.Cryptography;
