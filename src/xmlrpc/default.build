@@ -21,6 +21,7 @@
     <mkdir dir="${build.dir}" failonerror="true"/>
     <copy todir="${build.dir}" failonerror="true">
       <fileset basedir="${lib.dir}">
+        <include name="Brunet.Security.dll" />
         <include name="Brunet.dll" />
         <include name="CookComputing.XmlRpcV2.dll" />
         <include name="NUnit.Framework.dll" />
@@ -31,10 +32,11 @@
         <include name="XmlRpcManager.cs" />
         <include name="AdrXmlRpcConverter.cs" />
       </sources>
-      <references>        
-        <include name="${build.dir}/Brunet.dll" />
+      <references basedir="${build.dir}">        
+        <include name="Brunet.Security.dll" />
+        <include name="Brunet.dll" />
         <include name="System.Runtime.Remoting.dll"/>
-        <include name="${build.dir}/CookComputing.XmlRpcV2.dll" />
+        <include name="CookComputing.XmlRpcV2.dll" />
       </references>
     </csc>
     <copy todir="${lib.dir}" failonerror="true">
@@ -70,11 +72,12 @@
         <include name="XmlRpcManager.cs" />
         <include name="AdrXmlRpcConverter.cs" />
       </sources>
-      <references>
-        <include name="${build.dir}/Brunet.dll" />
+      <references basedir="${build.dir}">        
+        <include name="Brunet.Security.dll" />
+        <include name="Brunet.dll" />
         <include name="System.Runtime.Remoting.dll"/>
-        <include name="${build.dir}/CookComputing.XmlRpcV2.dll" />
-        <include name="${build.dir}/NUnit.Framework.dll" />
+        <include name="CookComputing.XmlRpcV2.dll" />
+        <include name="NUnit.Framework.dll" />
       </references>
     </csc>
   </target>

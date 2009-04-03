@@ -34,10 +34,10 @@ using System.Runtime.Remoting;
 using System.Security.Cryptography;
 using CookComputing.XmlRpc;
 
-namespace Brunet.Rpc {
-  public abstract class DhtAdapter : MarshalByRefObject, IDht {
+namespace Brunet.DhtService {
+  public abstract class DhtAdapter : MarshalByRefObject, IRpcDht {
     [NonSerialized]
-    public Dht _dht;
+    public IDht _dht;
     /* Use cache so that we don't experience a leak, this should be replaced 
      * with some timeout mechanism to support multiple interactions at the 
      * same time.
@@ -45,15 +45,15 @@ namespace Brunet.Rpc {
     [NonSerialized]
     protected Cache _bqs = new Cache(100);
 
-    public DhtAdapter(Dht dht) {
+    public DhtAdapter(IDht dht) {
       this._dht = dht;
     }
 
     public DhtAdapter() { ;}
 
-    public virtual bool Create(string key, string value, int ttl) {
+    public virtual bool Create(byte[] key, byte[] value, int ttl) {
       try {
-        _dht.Create(key, value, ttl);
+        _dht.Create(MemBlock.Reference(key), MemBlock.Reference(value), ttl);
         return true;
       }
       catch {
@@ -61,9 +61,9 @@ namespace Brunet.Rpc {
       }
     }
 
-    public virtual bool Put(string key, string value, int ttl) {
+    public virtual bool Put(byte[] key, byte[] value, int ttl) {
       try {
-        _dht.Put(key, value, ttl);
+        _dht.Put(MemBlock.Reference(key), MemBlock.Reference(value), ttl);
         return true;
       }
       catch {
@@ -71,36 +71,38 @@ namespace Brunet.Rpc {
       }
     }
 
-    public virtual DhtGetResult[] Get(string key) {
-      return _dht.Get(key);
+    public virtual IDictionary[] Get(byte[] key) {
+      return (IDictionary[]) _dht.Get(MemBlock.Reference(key));
     }
 
-    public virtual string BeginGet(string key) {
+    public virtual byte[] BeginGet(byte[] key) {
       BlockingQueue q  = new BlockingQueue();
-      this._dht.AsGet(key, q);
-      string tk = this.GenToken(key);
-      this._bqs.Add(tk, q);
+      this._dht.AsyncGet(MemBlock.Reference(key), q);
+      byte[] tk = GenToken(key);
+      _bqs.Add(MemBlock.Reference(tk), q);
       return tk;
     }
 
-    public virtual DhtGetResult ContinueGet(string token) {
-      BlockingQueue q = (BlockingQueue)this._bqs[token];
+    public virtual IDictionary ContinueGet(byte[] token) {
+      MemBlock tk = MemBlock.Reference(token);
+      BlockingQueue q = (BlockingQueue)this._bqs[tk];
       if(q == null) {
         throw new ArgumentException("Invalid token");
       }
-      DhtGetResult dgr = null;
+      IDictionary res = null;
       try {
-        dgr = (DhtGetResult)q.Dequeue();
+        res = (IDictionary) q.Dequeue();
       }
       catch {
-        dgr = DhtGetResult.Empty();
-        this._bqs.Remove(q);
+        res = new Hashtable();
+        _bqs.Remove(q);
       }
-      return dgr;
+      return res;
     }
 
-    public virtual void EndGet(string token) {
-      BlockingQueue q = (BlockingQueue)this._bqs[token];
+    public virtual void EndGet(byte[] token) {
+      MemBlock tk = MemBlock.Reference(token);
+      BlockingQueue q = (BlockingQueue)this._bqs[tk];
       if (q == null) {
         throw new ArgumentException("Invalid token");
       }
@@ -112,16 +114,14 @@ namespace Brunet.Rpc {
 
     public abstract IDictionary GetDhtInfo();
 
-    private string GenToken(string key) {
+    private byte[] GenToken(byte[] key) {
       RNGCryptoServiceProvider provider = new RNGCryptoServiceProvider();
       byte[] token = new byte[20];
       provider.GetBytes(token);
-      string res = string.Empty;
-      for(int i = 0; i < token.Length; i++) {
-        res += token[i].ToString();
-      }
-      string real_tk = key + ":" + res;
-      return real_tk;
+      byte[] res = new byte[40];
+      key.CopyTo(res, 0);
+      token.CopyTo(res, 20);
+      return res;
     }
 
     // This object is intended to stay in memory
@@ -136,18 +136,18 @@ namespace Brunet.Rpc {
 
 
   public class SoapDht : DhtAdapter, ISoapDht {
-    public SoapDht(Dht dht) : base(dht) { }
+    public SoapDht(IDht dht) : base(dht) { }
 
-    public IBlockingQueue GetAsBlockingQueue(string key) {
+    public IBlockingQueue GetAsBlockingQueue(byte[] key) {
       BlockingQueue bq = new BlockingQueue();
-      this._dht.AsGet(key, bq);
+      this._dht.AsyncGet(MemBlock.Reference(key), bq);
       BlockingQueueAdapter adpt = new BlockingQueueAdapter(bq);
       return adpt;
     }
 
     public override IDictionary GetDhtInfo() {
       Hashtable ht = new Hashtable();
-      ht.Add("address", _dht.node.Address.ToString());
+      ht.Add("address", _dht.Name);
       return ht;
     }
   }
@@ -156,42 +156,55 @@ namespace Brunet.Rpc {
   /// Dht stub using XmlRpc protocol
   /// </summary>
   public class XmlRpcDht : DhtAdapter {
-    public XmlRpcDht(Dht dht) : base(dht) { }
+    public XmlRpcDht(IDht dht) : base(dht) { }
+
+    protected XmlRpcStruct IDictionaryToXmlRpcStruct(IDictionary dict) {
+      XmlRpcStruct str = new XmlRpcStruct();
+      foreach(DictionaryEntry de in dict) {
+        str.Add(de.Key as string, de.Value);
+      }
+      return str;
+    }
 
     [XmlRpcMethod]
-    public override bool Create(string key, string value, int ttl) {
+    public override bool Create(byte[] key, byte[] value, int ttl) {
       return base.Create(key, value, ttl);
     }
 
     [XmlRpcMethod]
-    public override bool Put(string key, string value, int ttl) {
+    public override bool Put(byte[] key, byte[] value, int ttl) {
       return base.Put(key, value, ttl);
     }
 
     [XmlRpcMethod]
-    public override DhtGetResult[] Get(string key) {
-      return base.Get(key);
+    new public XmlRpcStruct[] Get(byte[] key) {
+      IDictionary[] vals = base.Get(key);
+      ArrayList output = new ArrayList();
+      foreach(IDictionary val in vals) {
+        output.Add(IDictionaryToXmlRpcStruct(val));
+      }
+      return (XmlRpcStruct[]) output.ToArray(typeof(XmlRpcStruct));
     }
 
     [XmlRpcMethod]
-    public override string BeginGet(string key) {
+    public override byte[] BeginGet(byte[] key) {
       return base.BeginGet(key);
     }
 
     [XmlRpcMethod]
-    public override DhtGetResult ContinueGet(string token) {
-      return base.ContinueGet(token);
+    new public XmlRpcStruct ContinueGet(byte[] token) {
+      return IDictionaryToXmlRpcStruct(base.ContinueGet(token));
     }
 
     [XmlRpcMethod]
-    public override void EndGet(string token) {
+    public override void EndGet(byte[] token) {
       base.EndGet(token);
     }
 
     [XmlRpcMethod]
     public override IDictionary GetDhtInfo() {
       XmlRpcStruct xrs = new XmlRpcStruct();
-      xrs.Add("address", _dht.node.Address.ToString());
+      xrs.Add("address", _dht.Name);
       return xrs;
     }
   }

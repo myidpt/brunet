@@ -6,20 +6,22 @@ python programs if they call crawl and use the nodes that are returned. """
 import xmlrpclib, pybru, sys, getopt, time
 
 usage = """usage:
-python crawl.py [--debug] [--debug2] [--port=<xmlrpc port of a brunet node>]
+python crawl.py [--debug] [--debug2] [--port=<xmlrpc port of a brunet node>] [--secure]
 debug = print the current node crawling
 debug2 = debug + print the neighbors of current node
 port = the xmlrpc port for a brunet node to be used for crawling
+secure = use secure proxy (senders) to crawl the ring
 help = this message"""
 
 # Default starting point
 def main():
   try:
-    optlist, args = getopt.getopt(sys.argv[1:], "", ["debug", "port=", "debug2"])
+    optlist, args = getopt.getopt(sys.argv[1:], "", ["debug", "port=", "debug2", "secure"])
 
     logger = null_logger
     port = 10000
     debug = False
+    secure = False
 
     for k,v in optlist:
       if k == "--port":
@@ -29,19 +31,24 @@ def main():
       elif k == "--debug2":
         logger = print_logger
         debug = True
+      elif k == "--secure":
+        secure = True
+
   except:
     print usage
     return
 
-  nodes = crawl(port, logger, debug)
-  count, consistency = check_results(nodes)
+  nodes = crawl(port, logger, debug, secure)
+  res = check_results2(nodes)
 
-  print "Consistent Nodes: " + str(consistency)
+  print "Consistent Nodes: " + str(res[1])
 
   cons = 0
-  if consistency != 0:
-    cons = consistency / (count * 1.0)
+  if res[1] != 0:
+    cons = res[1] / (res[0] * 1.0)
   print "Consistency: " + str(cons)
+  print "count, r1consistency, r2consistency, l1consistency, l2consistency, edges, cons, sas, wedges, tcp, tunnel, udp"
+  print res
 
 def check_results(nodes):
   count = 0
@@ -52,6 +59,45 @@ def check_results(nodes):
     consistency += nodes[addr]['consistency']
 
   return consistency, count
+
+def check_results2(nodes):
+  count = 0
+  r1consistency = 0
+  r2consistency = 0
+  l1consistency = 0
+  l2consistency = 0
+  sas = 0
+  cons = 0
+  tunnel = 0
+  udp = 0
+  tcp = 0
+  edges = 0
+  wedges = 0
+  for addr in nodes:
+    count += 1
+    node = nodes[addr]
+    if(node['right'] in nodes and nodes[node['right']]['left'] == addr):
+      r1consistency += 1
+    if(node['left'] in nodes and nodes[node['left']]['right'] == addr):
+      l1consistency += 1
+    if(node['right2'] in nodes and nodes[node['right2']]['left2'] == addr):
+      r2consistency += 1
+    if(node['left2'] in nodes and nodes[node['left2']]['right2'] == addr):
+      l2consistency += 1
+    sas += node['sas']
+    cons += node['cons']
+    wedges += node['wedges']
+    ltunnel = node['tunnel']
+    tunnel += ltunnel
+    ltcp = node['tcp']
+    tcp += ltcp
+    ludp = node['udp']
+    udp += ludp
+    edges += ltunnel + ludp + ltcp
+    
+
+  return (count, r1consistency, r2consistency, l1consistency, l2consistency, edges, cons, sas, wedges, tcp, tunnel, udp)
+
 
 def print_logger(msg):
   print msg
@@ -67,7 +113,7 @@ def null_logger(msg):
 # @todo currently this script does not handle nodes not having left2 and right2
 # and nodes will not be skipped until the set of four (right, right2, left,
 # left2).  This could make the crawlers results slightly wrong.
-def crawl(port = 10000, logger = null_logger, debug = False):
+def crawl(port = 10000, logger = null_logger, debug = False, secure = False):
   port = str(port)
   #gain access to the xmlrpc server
   rpc = xmlrpclib.Server("http://127.0.0.1:" + port + "/xm.rem")
@@ -86,11 +132,15 @@ def crawl(port = 10000, logger = null_logger, debug = False):
   retry_count = 0
   #after the transition from node 0->Z, we've visted all nodes less than us
   half_way = False
+  trying_right2 = False
 
   while True:
     try:
       logger(node + " " + str(retry_count) + " " + str(no_response_count) + "\n")
-      res = rpc.proxy(node, 3, 1, "Information.Info")[0]
+      if secure:
+        res = rpc.SecureProxy(node, 3, 1, "Information.Info")[0]
+      else:
+        res = rpc.proxy(node, 3, 1, "Information.Info")[0]
       if debug:
         logger(str(res))
       neighbors = res['neighbors']
@@ -125,6 +175,27 @@ def crawl(port = 10000, logger = null_logger, debug = False):
         info['namespace'] = res['IpopNamespace']
       info['retries'] = no_response_count * (retry_count + 1)
 
+      info['cons'] = 0
+      info['tcp'] = 0
+      info['tunnel'] = 0
+      info['udp'] = 0
+
+      if 'cons' in res:
+        info['cons'] = res['cons']
+      if 'tcp' in res:
+        info['tcp'] = res['tcp']
+      if 'tunnel' in res:
+        info['tunnel'] = res['tunnel']
+      if 'udp' in res:
+        info['udp'] = res['udp']
+
+      try:
+        info['wedges'] = res['wedges']
+        info['sas'] = res['sas']
+      except:
+        info['wedges'] = 0
+        info['sas'] = 0
+
       no_resonse_count = 0
       if node != last:
         retry_count = 0
@@ -135,8 +206,18 @@ def crawl(port = 10000, logger = null_logger, debug = False):
         no_response_count = 0
         retry_count += 1
         if retry_count ==  retry_max:
-          print "Unable to crawl the system."
-          break
+          if trying_right2:
+            print "Unable to crawl the system."
+            break
+          else:
+            trying_right2 = True
+            retry_count = 0
+            no_response_count = 0
+            try:
+              node = nodes[last]['right2']
+            except:
+              print "Unable to crawl the system."
+              break
       continue
     #it is possible that the node we're trying to talk to is the one we end up with!
     node = neighbors['self']
@@ -152,6 +233,8 @@ def crawl(port = 10000, logger = null_logger, debug = False):
       break
 
     #maintain a list of everyones neighbors
+    if node != last:
+      trying_right2 = False
     nodes[node] = info
     last = node
     node = info['right']
