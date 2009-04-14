@@ -60,8 +60,8 @@ namespace Brunet.Applications {
     /// <summary>An rpc interface over the local node.</summary>
     public RpcManager Rpc { get { return _node.Rpc; } }
     /// <summary>The Dht object used to participate in the dht.</summary>
-    public Dht Dht { get { return _dht; } }
-    protected Dht _dht;
+    public IDht Dht { get { return _dht; } }
+    protected IDht _dht;
     /// <summary>The NCService object used for this node.</summary>
     protected NCService _ncservice;
     /// <summary>The DhtRpc service provider.</summary>
@@ -88,7 +88,7 @@ namespace Brunet.Applications {
       try {
         _node_config = Utils.ReadConfig<NodeConfig>(path);
       }
-      catch (Exception e){
+      catch (Exception) {
         Console.WriteLine("Invalid or missing configuration file.");
         Environment.Exit(1);
       }
@@ -218,7 +218,8 @@ namespace Brunet.Applications {
           try {
             el = new UdpEdgeListener(port, addresses);
           }
-          catch {
+          catch(Exception e) {
+            Console.WriteLine(e);
             el = new UdpEdgeListener(0, addresses);
           }
         }
