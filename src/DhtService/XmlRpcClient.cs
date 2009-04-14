@@ -44,6 +44,8 @@ namespace Brunet.DhtService {
     [XmlRpcMethod]
     new bool Put(byte[] key, byte[] value, int ttl);
     [XmlRpcMethod]
+    new bool Delete(byte[] key, byte[] value);
+    [XmlRpcMethod]
     new byte[] BeginGet(byte[] key);
     [XmlRpcMethod]
     new XmlRpcStruct ContinueGet(byte[] token);

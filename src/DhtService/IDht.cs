@@ -42,6 +42,8 @@ namespace Brunet.DhtService {
     /// <returns>true if successful</returns>
     bool Put(byte[] key, byte[] value, int ttl);
 
+    bool Delete(byte[] key, byte[] value);
+
     /**
      * @return: token for ContinueGet
      */

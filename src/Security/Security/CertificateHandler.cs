@@ -52,6 +52,8 @@ namespace Brunet {
       }
     }
 
+    public event EventHandler NewCertificateEvent;
+
     public X509Certificate DefaultCertificate { 
       get {
         X509Certificate cert = null;
@@ -65,7 +67,8 @@ namespace Brunet {
 
 
     /// <summary>List of supported CAs serial numbers.</summary>
-    public List<MemBlock> SupportedCAs { get { return _supported_cas; } }
+    public List<MemBlock> SupportedCAs { get { return new List<MemBlock>(_supported_cas); } }
+    public List<X509Certificate> LocalCertificates { get { return new List<X509Certificate>(_lc.Values); } }
 
     public CertificateHandler() : this("certificates")
     {
@@ -191,6 +194,9 @@ namespace Brunet {
       lock(_sync) {
         _lc[sn] = cert;
         _lc_issuers.Add(sn);
+      }
+      if(NewCertificateEvent != null) {
+        NewCertificateEvent(cert, EventArgs.Empty);
       }
       return true;
     }

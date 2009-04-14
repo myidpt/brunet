@@ -172,6 +172,7 @@ namespace Brunet.DistributedServices {
       if(!_online) {
         throw new DhtException("The Node is (going) offline, DHT is offline.");
       }
+
       // create a GetState and map in our table map its queues to it
       // so when we get a GetHandler we know which state to load
       AsDhtGetState adgs = new AsDhtGetState(returns);
@@ -520,6 +521,14 @@ namespace Brunet.DistributedServices {
           adps.returns.Close();
         }
       }
+    }
+
+    public void AsyncDelete(MemBlock key, MemBlock value, Channel returns) {
+      throw new System.NotImplementedException();
+    }
+
+    public bool Delete(MemBlock key, MemBlock value) {
+      throw new System.NotImplementedException();
     }
 
     /// <summary>Get the hash of the first key and add 1/DEGREE * Address space

@@ -69,6 +69,8 @@ namespace Brunet.DistributedServices {
     /// <returns>An array of Hashtables containing the returnedresults.</returns>
     Hashtable[] Get(MemBlock key);
 
+    void AsyncDelete(MemBlock key, MemBlock value, Channel returns);
+    bool Delete(MemBlock key, MemBlock value);
     string Name { get; }
     bool Online { get; }
   }

@@ -218,8 +218,7 @@ namespace Brunet.Applications {
           try {
             el = new UdpEdgeListener(port, addresses);
           }
-          catch(Exception e) {
-            Console.WriteLine(e);
+          catch(Exception) {
             el = new UdpEdgeListener(0, addresses);
           }
         }
@@ -256,7 +255,8 @@ namespace Brunet.Applications {
       }
 
       new TableServer(_node);
-      _dht = new Dht(_node, 3, 20);
+      IDht dht = new Dht(_node, 3, 20);
+      _dht = new DeleteDht(dht);
     }
 
     /// <summary>Starts services such as shutdown, rpcdht, and xmlrpc.  If you wish
