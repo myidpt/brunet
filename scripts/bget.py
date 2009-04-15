@@ -1,4 +1,4 @@
-#!//usr/bin/python
+#!/usr/bin/env python
 import xmlrpclib, getopt, sys
 pydht = xmlrpclib.Server('http://localhost:64221/xd.rem')
 #pydht = xmlrpclib.Server('http://128.227.56.152:64221/xd.rem')
@@ -17,7 +17,7 @@ if (len(args) < 1):
   \tbget.py [--output=<filename to write value to>] [--quiet (only print the value)] <key>"""
   sys.exit(1)
 
-for value_dict in pydht.Get(args[0]):
+for value_dict in pydht.Get(xmlrpclib.Binary(args[0])):
   value = value_dict['value'].data
   ttl = value_dict['ttl']
   print value
