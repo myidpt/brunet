@@ -53,8 +53,7 @@ namespace Brunet.DhtService {
 
     public virtual bool Create(byte[] key, byte[] value, int ttl) {
       try {
-        _dht.Create(MemBlock.Reference(key), MemBlock.Reference(value), ttl);
-        return true;
+        return _dht.Create(MemBlock.Reference(key), MemBlock.Reference(value), ttl);
       }
       catch {
         return false;
@@ -63,8 +62,16 @@ namespace Brunet.DhtService {
 
     public virtual bool Put(byte[] key, byte[] value, int ttl) {
       try {
-        _dht.Put(MemBlock.Reference(key), MemBlock.Reference(value), ttl);
-        return true;
+        return _dht.Put(MemBlock.Reference(key), MemBlock.Reference(value), ttl);
+      }
+      catch {
+        return false;
+      }
+    }
+
+    public virtual bool Delete(byte[] key, byte[] value) {
+      try {
+        return _dht.Delete(MemBlock.Reference(key), MemBlock.Reference(value));
       }
       catch {
         return false;
@@ -174,6 +181,11 @@ namespace Brunet.DhtService {
     [XmlRpcMethod]
     public override bool Put(byte[] key, byte[] value, int ttl) {
       return base.Put(key, value, ttl);
+    }
+
+    [XmlRpcMethod]
+    public override bool Delete(byte[] key, byte[] value) {
+      return base.Delete(key, value);
     }
 
     [XmlRpcMethod]
