@@ -42,7 +42,13 @@ namespace Brunet.Applications {
           sd = new Shutdown();
         }
       }
-      catch {}
+      catch {
+        if(OSDependent.OSVersion == OSDependent.OS.Linux) {
+          Console.WriteLine("Shutting down via ctrl-c will not work, perhaps " +
+              "you do not have the Mono.Posix libraries installed");
+        }
+        sd = new Shutdown();
+      }
       return sd;
     }
   }
