@@ -127,7 +127,13 @@ namespace Brunet.Applications {
     /// local end points, specifying remote end points, and finally registering
     /// the dht.</remarks>
     public virtual void CreateNode() {
-      AHAddress address = (AHAddress) AddressParser.Parse(_node_config.NodeAddress);
+      AHAddress address = null;
+      try {
+        address = (AHAddress) AddressParser.Parse(_node_config.NodeAddress);
+      } catch {
+        address = Utils.GenerateAHAddress();
+      }
+
       _node = new StructuredNode(address, _node_config.BrunetNamespace);
       IEnumerable addresses = IPAddresses.GetIPAddresses(_node_config.DevicesToBind);
 

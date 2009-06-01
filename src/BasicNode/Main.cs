@@ -97,8 +97,8 @@ namespace Brunet.Applications {
     }
 
     public static void ShowHelp(OptionSet p) {
-      Console.WriteLine("Usage: IpopRouter --IpopConfig=filename --NodeConfig=filename");
-      Console.WriteLine("IpopRouter - Virtual Networking Daemon.");
+      Console.WriteLine("Usage: P2PNode --Count=[number of nodes] --NodeConfig=filename");
+      Console.WriteLine("P2PNode - Virtual Networking Daemon.");
       Console.WriteLine();
       Console.WriteLine("Options:");
       p.WriteOptionDescriptions(Console.Out);
