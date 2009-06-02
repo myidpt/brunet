@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Threading;
 using Brunet;
 
 namespace Brunet.Applications {
@@ -10,15 +11,13 @@ namespace Brunet.Applications {
   add their shutdown method to the OnExit CallBack.</summary>
   */
   public class Shutdown {
-    /// <summary>Defines a simple delegate callback for Exiting</summary>
-    public delegate void CallBack();
     /// <summary>Add the shutdown method to this delegate</summary>
-    public CallBack OnExit;
+    public ThreadStart OnExit;
     /**  <summary>This should be called by ctrl-c handlers in inherited classes
     </summary>*/
     public int Exit() {
       if(OnExit != null) {
-        OnExit();
+        new Thread(OnExit).Start();
       }
       Console.WriteLine("Done!");
       return 0;

@@ -28,7 +28,6 @@ using Brunet;
 using Brunet.Coordinate;
 using Brunet.DistributedServices;
 using Brunet.Rpc;
-using Brunet.DhtService;
 using Brunet.Security;
 
 using System.Security.Cryptography;
@@ -64,8 +63,6 @@ namespace Brunet.Applications {
     protected IDht _dht;
     /// <summary>The NCService object used for this node.</summary>
     protected NCService _ncservice;
-    /// <summary>The DhtRpc service provider.</summary>
-    protected DhtServer _ds;
     /// <summary>The XmlRpc service provider.</summary>
     protected XmlRpcManagerServer _xrm;
     /// <summary>The shutdown service provider.</summary>
@@ -80,41 +77,12 @@ namespace Brunet.Applications {
     public BrunetSecurityOverlord Bso { get { return _bso; } }
     protected BrunetSecurityOverlord _bso;
 
-    /// <summary>Loads a configuration file and creates a Node.Address if
-    /// necessary.</summary>
-    /// <param name="path">The path to a NodeConfig</param>
-    /// <returns>Exits if NodeConfig is invalid.</returns>
-    public BasicNode(String path) {
-      try {
-        _node_config = Utils.ReadConfig<NodeConfig>(path);
-      }
-      catch (Exception) {
-        Console.WriteLine("Invalid or missing configuration file.");
-        Environment.Exit(1);
-      }
-
-      _node_config_path = path;
-      if(_node_config.NodeAddress == null) {
-        _node_config.NodeAddress = (Utils.GenerateAHAddress()).ToString();
-        Utils.WriteConfig(path, _node_config);
-      }
+    /// <summary>Prepares a BasicNode.</summary>
+    /// <param name="node_config">A node config object.</param>
+    public BasicNode(NodeConfig node_config) {
+      _node_config = node_config;
       _running = true;
       _shutdown = Shutdown.GetShutdown();
-    }
-
-    /// <summary>A constructor to be used only by sub-classes.  The goal here being
-    /// that inheritors may want to implement their own subclass of config but
-    /// BasicNode still needs to be configured and possibly write to the config
-    /// file.  This gets around that problem!</summary>
-    /// <param name="path">The Path of the NodeConfig in the second parameter </param>
-    /// <param name="config">A NodeConfig inherited object.</param>
-    protected BasicNode(String path, NodeConfig config) {
-      _node_config = config;
-      if(_node_config.NodeAddress == null) {
-        _node_config.NodeAddress = (Utils.GenerateAHAddress()).ToString();
-        Utils.WriteConfig(path, _node_config);
-      }
-      _running = true;
     }
 
     /// <summary>This should be called by the Main after all the setup is done
@@ -127,7 +95,7 @@ namespace Brunet.Applications {
       while(_running) {
         CreateNode();
         new Information(_node, "BasicNode", _bso);
-        Console.Error.WriteLine("I am connected to {0} as {1}.  Current time is {2}.",
+        Console.WriteLine("I am connected to {0} as {1}.  Current time is {2}.",
                                 _node.Realm, _node.Address.ToString(), DateTime.UtcNow);
         _node.DisconnectOnOverload = true;
         start_time = DateTime.UtcNow;
@@ -139,7 +107,7 @@ namespace Brunet.Applications {
         }
         // Assist in garbage collection
         DateTime now = DateTime.UtcNow;
-        Console.Error.WriteLine("Going to sleep for {0} seconds. Current time is: {1}", sleep, now);
+        Console.WriteLine("Going to sleep for {0} seconds. Current time is: {1}", sleep, now);
         Thread.Sleep(sleep * 1000);
         if(now - start_time < TimeSpan.FromSeconds(sleep_max)) {
           sleep *= 2;
@@ -159,7 +127,13 @@ namespace Brunet.Applications {
     /// local end points, specifying remote end points, and finally registering
     /// the dht.</remarks>
     public virtual void CreateNode() {
-      AHAddress address = (AHAddress) AddressParser.Parse(_node_config.NodeAddress);
+      AHAddress address = null;
+      try {
+        address = (AHAddress) AddressParser.Parse(_node_config.NodeAddress);
+      } catch {
+        address = Utils.GenerateAHAddress();
+      }
+
       _node = new StructuredNode(address, _node_config.BrunetNamespace);
       IEnumerable addresses = IPAddresses.GetIPAddresses(_node_config.DevicesToBind);
 
@@ -218,8 +192,7 @@ namespace Brunet.Applications {
           try {
             el = new UdpEdgeListener(port, addresses);
           }
-          catch(Exception e) {
-            Console.WriteLine(e);
+          catch {
             el = new UdpEdgeListener(0, addresses);
           }
         }
@@ -265,18 +238,10 @@ namespace Brunet.Applications {
     public virtual void StartServices() {
       _shutdown.OnExit += OnExit;
 
-      if(_node_config.RpcDht != null && _node_config.RpcDht.Enabled) {
-        if(_ds == null) {
-          _ds = new DhtServer(_node_config.RpcDht.Port);
-        }
-        _ds.Update(_dht);
-      }
-
-      if(_node_config.XmlRpcManager != null && _node_config.XmlRpcManager.Enabled) {
-        if(_xrm == null) {
-          _xrm = new XmlRpcManagerServer(_node_config.XmlRpcManager.Port);
-        }
+      if(_node_config.XmlRpcManager.Enabled && _xrm == null) {
+        _xrm = new XmlRpcManagerServer(_node_config.XmlRpcManager.Port);
         _xrm.Update(_node, _bso);
+        new RpcDht(_dht, _node);
       }
     }
 
@@ -287,9 +252,6 @@ namespace Brunet.Applications {
     </summary>
      */
     public virtual void SuspendServices() {
-      if(_ds != null) {
-        _ds.Stop();
-      }
       if(_xrm != null) {
         _xrm.Suspend();
       }
@@ -301,10 +263,6 @@ namespace Brunet.Applications {
     required and you would like to release the ports</summary>
     */
     public virtual void StopServices() {
-      if(_ds != null) {
-        _ds.Stop();
-        _ds = null;
-      }
       if(_xrm != null) {
         _xrm.Stop();
         _xrm = null;
@@ -322,37 +280,16 @@ namespace Brunet.Applications {
         string checkpoint = _ncservice.GetCheckpoint();
         string prev_cp = _node_config.NCService.Checkpoint;
         string empty_cp = (new Point()).ToString();
-        if(!checkpoint.Equals(prev_cp) && !checkpoint.Equals(empty_cp)) {
+        if(!checkpoint.Equals(prev_cp) && !checkpoint.Equals(empty_cp))
+        {
           _node_config.NCService.Checkpoint = checkpoint;
-          Utils.WriteConfig(_node_config_path, _node_config);
+          _node_config.WriteConfig();
         }
       }
 
       StopServices();
       _running = false;
       _node.Disconnect();
-    }
-
-    /**
-    <summary>Runs the BasicNode.  This should be implemented in all inherited
-    classes.</summary>
-    <remarks>
-    <para>To execute this at a command-line using Mono:</para>
-    <code>
-    mono BasicNode.exe path/to/node_config
-    </code>
-    <para>To execute this at a command-line using Windows .NET:</para>
-    <code>
-    BasicNode.exe path/to/node_config
-    </code>
-    </remarks>
-    <param name="args">The command line argument required is a path to a
-    NodeConfig</param>
-    */
-    public static int Main(String[] args) {
-      BasicNode node = new BasicNode(args[0]);
-      node.Run();
-      return 0;
     }
   }
 }
