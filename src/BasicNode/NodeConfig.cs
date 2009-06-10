@@ -55,7 +55,6 @@ namespace Brunet.Applications {
       EdgeListeners = new EdgeListener[0];
       RemoteTAs = new String[0];
       DevicesToBind = new String[0];
-      RpcDht = new Service();
       XmlRpcManager = new Service();
       NCService = new NCServiceConfig();
       Security = new SecurityPolicy();
@@ -83,9 +82,6 @@ namespace Brunet.Applications {
     </summary>*/
     [XmlArrayItem (typeof(String), ElementName = "Device")]
     public String[] DevicesToBind;
-    /**  <summary>Specifies RpcDht configuration.  This is optional and only
-    required if RpcDht is desired.</summary>*/
-    public Service RpcDht;
     /**  <summary>Specifies XmlRpc configuration.  This is optional and only
     required if XmlRpc is desired.</summary>*/
     public Service XmlRpcManager;
@@ -147,7 +143,7 @@ namespace Brunet.Applications {
     }
 
     /// <summary>Path to the configs file system location.</summary>
-    [NonSerialized]
+    [XmlIgnoreAttribute]
     public string Path;
 
     /// <summary>Writres the config to the file system.</summary>
