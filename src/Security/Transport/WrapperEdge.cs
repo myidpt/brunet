@@ -16,13 +16,14 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
+using Brunet;
 using System;
 using System.Threading;
 using System.Collections;
 
-namespace Brunet {
+namespace Brunet.Security.Transport {
   ///<summary>Provides a Wrapper for edges, this allows us to control input,
-  ///output, and state of the edge.</summary>
+  ///output, and state of the edge.  This class is thread-safe.</summary>
   ///<remarks>This could be an abstract class, but it was fully implemented for
   ///testing purposes</summary>
   public class WrapperEdge: Edge, IDataHandler {

@@ -11,7 +11,7 @@ using System.Security.Cryptography;
 using System.IO;
 using System.Diagnostics;
 using System.Reflection;
-using Brunet.Security;
+using Brunet.Security.Protocol;
 #if BRUNET_NUNIT
 using NUnit.Framework;
 #endif
@@ -39,7 +39,7 @@ namespace Brunet.Rpc {
     private Hashtable _registered_xmlrpc = new Hashtable(); 
 
     [NonSerialized]
-    protected BrunetSecurityOverlord _bso;
+    protected ProtocolSecurityOverlord _bso;
     #endregion
 
     public XmlRpcManager(Node node, RpcManager rpc) {
@@ -47,7 +47,7 @@ namespace Brunet.Rpc {
       _rpc = rpc;
     }
 
-    public XmlRpcManager(Node node, RpcManager rpc, BrunetSecurityOverlord bso) :
+    public XmlRpcManager(Node node, RpcManager rpc, ProtocolSecurityOverlord bso) :
       this(node, rpc)
     {
       _bso = bso;
@@ -508,7 +508,7 @@ namespace Brunet.Rpc {
       Update(node, rpc);
     }
 
-    public void Update(Node node, BrunetSecurityOverlord bso)
+    public void Update(Node node, ProtocolSecurityOverlord bso)
     {
       RpcManager rpc = RpcManager.GetInstance(node);
       _rpc = rpc;
